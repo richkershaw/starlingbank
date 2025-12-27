@@ -123,6 +123,7 @@ class SavingsGoal:
             file.write(b64decode(base64_image))
 
 
+
 """Representation of a Spending Category."""
 class SpendingCategory:
 
@@ -157,6 +158,30 @@ class SpendingCategory:
         self.percentage = category.get("percentage")
         self.transaction_count = category.get("transactionCount")
 
+class Space:
+
+    def __init__(
+        self, auth_headers: Dict, sandbox: bool, account_uid: str
+    ) -> None:
+        self._auth_headers = auth_headers
+        self._sandbox = sandbox
+        self._account_uid = account_uid
+
+        self.uid = None
+        self.name = None
+        self.balance = 0.0
+        self.card_association_uid = None
+        self.space_type = None
+        self.active = True
+
+    def update(self, space: Dict = None) -> None:
+        """Update a single space's data."""
+        self.uid = space.get("spaceUid")
+        self.name = space.get("name")
+        self.balance = space.get("balance", {}).get("minorUnits", 0.0)
+        self.card_association_uid = space.get("cardAssociationUid")
+        self.space_type = space.get("spendingSpaceType")
+        self.active = (space.get("state", "ACTIVE") == "ACTIVE")
 
 """Representation of a Starling Account."""
 class StarlingAccount:
@@ -231,6 +256,40 @@ class StarlingAccount:
         for uid in list(self.savings_goals):
             if uid not in returned_uids:
                 self.savings_goals.pop(uid)
+    
+    def update_spaces_data(self) -> None:
+        """Get the latest spaces information for the account."""
+        response = get(
+            _url(
+                "/account/{0}/spaces".format(self._account_uid),
+                self._sandbox,
+            ),
+            headers=self._auth_headers,
+        )
+        response.raise_for_status()
+
+        response = response.json()
+        response_spaces = response.get("spendingSpaces", {})
+
+        returned_uids = []
+
+        # New / Update
+        for space in response_spaces:
+            uid = space.get("spaceUid")
+            returned_uids.append(uid)
+
+            # Intiialise new _Space object if new
+            if uid not in self.spaces:
+                self.spaces[uid] = Space(
+                    self._auth_headers, self._sandbox, self._account_uid
+                )
+
+            self.spaces[uid].update(space)
+
+        # Forget about spaces if the UID isn't returned by Starling
+        for uid in list(self.spaces):
+            if uid not in returned_uids:
+                self.spaces.pop(uid)
 
     def _set_basic_account_data(self):
         response = get(
@@ -323,8 +382,12 @@ class StarlingAccount:
         # Spending Category Data
         self.spending_categories = {}  # type: Dict[str, SpendingCategory]
 
+        # Spaces data
+        self.spaces = {}  # type: Dict[str, Space]
+
         if update:
             self.update_account_data()
             self.update_balance_data()
             self.update_savings_goal_data()
             self.update_spending_categories_data()
+            self.update_spaces_data()

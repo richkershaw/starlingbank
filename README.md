@@ -14,12 +14,16 @@ An **unofficial** python package that provides access to parts of the Starling b
     * [Basic Account Data](#basic-account-data)
     * [Balance Data](#balance-data)
     * [Savings Goal Data](#savings-goal-data)
+    * [Space Data](#space-data)
   * [Update a Single Savings Goal](#update-a-single-savings-goal)
   * [Add to / withdraw from a Savings Goal](#add-to--withdraw-from-a-savings-goal)
   * [Download a Savings Goal Image](#download-a-savings-goal-image)
 
 
 ## Change Log
+27/12/2025
+* Added Space class and relevant method to StarlingAccount class.
+
 7/10/2024
 * Added SpendingCategory class and relevant method to StarlingAccount class.
 
@@ -75,14 +79,15 @@ my_account = StarlingAccount("<INSERT API TOKEN HERE>", update=True)
 ```
 
 ### Data
-4 data sets are currently supported:
+5 data sets are currently supported:
 
 1. Basic Account Data
 2. Balance Data
 3. Savings Goal Data
 4. Spending Category Data
+5. Spaces and Space balance Data
 
- You have to request / refresh each set of data as required with the following commands:
+You have to request / refresh each set of data as required with the following commands:
 
 ```python
 my_account.update_account_data()
@@ -145,6 +150,23 @@ Example:
 ```python
 print(my_account.savings_goals['c8553fd8-8260-65a6-885a-e0cb45691512'].total_saved_minor_units)
 ```
+
+#### Space Data
+Spaces are a dictionary of objects where the dictionary key is the space uid. To get a list of spaces, their respective uids and balances you can run:
+
+```python
+for uid, space, balance in my_account.spaces.items():
+    print("{0} ({1}) = {2}".format(uid, space.name, space.balance))
+```
+
+Spaces have the folloding properties:
+
+* uid
+* name
+* balance
+* card_association_uid
+* space_type
+* active
 
 #### Spending Category Data
 Spending categories are stored as a dictionary of SpendingCategory objects, where the dictionary key is the spending_category. To get a list of spending categories and their respective data, you can run:
